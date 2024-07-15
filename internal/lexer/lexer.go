@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"lp/internal/token"
+	"slices"
 	"unicode"
 )
 
@@ -67,7 +68,7 @@ func (l *Lexer) readIdentifyer() string {
 func (l *Lexer) readNumber() string {
 	position := l.position
 
-	for unicode.IsDigit(rune(l.ch)) || l.ch == '.' {
+	for unicode.IsDigit(rune(l.ch)) || l.ch == '.' || l.ch == '-' {
 		l.readChar()
 	}
 
@@ -113,6 +114,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RCB, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
+	case '#':
+		tok = newToken(token.HASH, l.ch)
 	case '-':
 		if l.peekChar() == '-' {
 			l.readChar()
@@ -121,6 +124,13 @@ func (l *Lexer) NextToken() token.Token {
 			tok.Literal = l.readUntilEOL()
 			return tok
 		}
+
+		if unicode.IsDigit(rune(l.peekChar())) {
+			tok.Type = token.FLOAT
+			tok.Literal = l.readNumber()
+			return tok
+		}
+
 		tok.Type = token.STR
 		tok.Literal = l.readIdentifyer()
 		return tok
@@ -128,21 +138,25 @@ func (l *Lexer) NextToken() token.Token {
 		tok.Type = token.EOF
 		tok.Literal = ""
 	default:
-		if isLetter(l.ch) {
+
+		if !l.peekNumber() {
+
 			tok.Type = token.STR
-			tok.Literal = l.readIdentifyer()
-			return tok
-		} else if unicode.IsDigit(rune(l.ch)) {
-			tok.Literal = l.readNumber()
-
-			if isFloat(tok.Literal) {
-				tok.Type = token.FLOAT
-			} else {
-				tok.Type = token.INT
-			}
-
+			tok.Literal = l.readString()
 			return tok
 		}
+
+		num := l.readNumber()
+		tok.Literal = num
+
+		if isFloat(tok.Literal) {
+			tok.Type = token.FLOAT
+			return tok
+
+		}
+
+		tok.Type = token.INT
+		return tok
 	}
 
 	l.readChar()
@@ -166,6 +180,73 @@ func newToken(t token.TokenType, ch byte) token.Token {
 		Type:    t,
 		Literal: string(ch),
 	}
+}
+
+func (l *Lexer) peekNumber() bool {
+	pos := l.position
+
+	blacklist := []byte{
+		' ',
+		'\n',
+		0,
+		'{',
+		'}',
+		'[',
+		']',
+		',',
+	}
+
+	for !slices.Contains(blacklist, l.input[pos]) {
+
+		if !unicode.IsDigit(rune(l.input[pos])) && l.input[pos] != '.' {
+			return false
+		}
+
+		pos++
+
+		if pos == len(l.input) {
+			return true
+		}
+	}
+
+	return true
+
+}
+
+func (l *Lexer) readString() string {
+	position := l.position
+
+	blacklist := []byte{
+		' ',
+		'\n',
+		0,
+		'{',
+		'}',
+		'[',
+		']',
+	}
+
+	for !slices.Contains(blacklist, l.ch) {
+
+		l.readChar()
+	}
+
+	return l.input[position:l.position]
+}
+
+func stringIsNumber(s string) bool {
+
+	if len(s) < 1 {
+		return false
+	}
+
+	for _, ch := range s {
+		if !unicode.IsDigit(ch) && ch != '.' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func isLetter(ch byte) bool {

@@ -1,9 +1,8 @@
 package parser
 
 import (
-	"log/slog"
 	"lp/internal/lexer"
-	"lp/internal/lyrics"
+	"lp/pkg/lyrics"
 	"testing"
 )
 
@@ -34,6 +33,7 @@ func TestParseSectionTitle(t *testing.T) {
     [Instrumental]
     [Bridge R]
     [Verse 2 R]
+    [Pre Chorus 2 R]
     `
 
 	l := lexer.NewLexer(input)
@@ -53,6 +53,36 @@ func TestParseSectionTitle(t *testing.T) {
 			expectedName:   "Chorus",
 			expectedNumber: 0,
 			expectedLang:   "",
+		},
+		{
+			expectedName:   "Tag",
+			expectedNumber: 0,
+			expectedLang:   "",
+		},
+		{
+			expectedName:   "Verse",
+			expectedNumber: 2,
+			expectedLang:   "",
+		},
+		{
+			expectedName:   "Instrumental",
+			expectedNumber: 0,
+			expectedLang:   "",
+		},
+		{
+			expectedName:   "Bridge",
+			expectedNumber: 0,
+			expectedLang:   "R",
+		},
+		{
+			expectedName:   "Verse",
+			expectedNumber: 2,
+			expectedLang:   "R",
+		},
+		{
+			expectedName:   "Pre Chorus",
+			expectedNumber: 2,
+			expectedLang:   "R",
 		},
 	}
 
@@ -86,7 +116,6 @@ func TestParseSection(t *testing.T) {
     Безмерна. Безконца?
 
     `
-	slog.SetLogLoggerLevel(slog.LevelDebug)
 	tests := []lyrics.Section{
 		{
 			Name:     "Verse",
@@ -204,6 +233,93 @@ func testParseSection(input string, tests []lyrics.Section, t *testing.T) {
 				)
 			}
 		}
+	}
+
+}
+
+func TestChordsSection(t *testing.T) {
+	input := `[ Intro ]
+    #1 5sus4/7 2m7 42 1`
+	tests := []struct {
+		expectedRawChord string
+		expectedRoot     int
+		expectedMinor    bool
+		expectedVariant  string
+		expectedBass     int
+	}{
+		{expectedRawChord: "1", expectedRoot: 1, expectedMinor: false, expectedVariant: "", expectedBass: 0},
+		{expectedRawChord: "5sus4/7", expectedRoot: 5, expectedMinor: false, expectedVariant: "sus4", expectedBass: 7},
+		{expectedRawChord: "2m7", expectedRoot: 2, expectedMinor: true, expectedVariant: "7", expectedBass: 0},
+		{expectedRawChord: "42", expectedRoot: 4, expectedMinor: false, expectedVariant: "2", expectedBass: 0},
+		{expectedRawChord: "1", expectedRoot: 1, expectedMinor: false, expectedVariant: "", expectedBass: 0},
+	}
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+
+	ll := p.Parse()
+
+	if len(ll.Sections) < 1 {
+		t.Fatalf("expected at least one sectiont, got 0. %#v", ll)
+	}
+
+	for i, tt := range tests {
+		c := ll.Sections[0].Chords[0][i]
+
+		if tt.expectedRawChord != c.RawChord {
+			t.Fatalf("test[%d] failed expected RawChord %s got %s", i, tt.expectedRawChord, c.RawChord)
+		}
+
+		if tt.expectedRoot != c.Root {
+			t.Fatalf("test[%d] failed expected Root %v got %v", i, tt.expectedRoot, c.Root)
+		}
+
+		if tt.expectedMinor != c.Minor {
+			t.Fatalf("test[%d] failed expected Minor %v got %v", i, tt.expectedMinor, c.Minor)
+		}
+
+		if tt.expectedVariant != c.Variant {
+			t.Fatalf("test[%d] failed expected Variant %v got %v", i, tt.expectedVariant, c.Variant)
+		}
+
+		if tt.expectedBass != c.Bass {
+			t.Fatalf("test[%d] failed expected Bass %v got %v", i, tt.expectedBass, c.Bass)
+		}
+	}
+
+}
+
+func TestChordsWithLyricsSection(t *testing.T) {
+	input := `[ Intro ]
+    #1 5sus4/7 2m7 42 1
+    Nothing Can Separate
+    `
+
+	test := struct {
+		expectedLen    int
+		expectedLine   string
+		expectedChords string
+	}{
+		expectedLen:    1,
+		expectedLine:   "Nothing Can Separate",
+		expectedChords: "1 5sus4/7 2m7 42 1",
+	}
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+
+	ll := p.Parse()
+
+	if len(ll.Sections) != test.expectedLen {
+		t.Fatalf("incorrect section len expected %d got %d. %#v", test.expectedLen, len(ll.Sections), ll)
+	}
+
+	if cl := ll.Sections[0].Chords[0].String(); cl != test.expectedChords {
+		t.Fatalf("chord line do not match. expected %s got %s", test.expectedChords, cl)
+	}
+
+	if line := ll.Sections[0].Text[0].Text; line != test.expectedLine {
+		t.Fatalf("chord line do not match. expected %s got %s", test.expectedChords, line)
 	}
 
 }

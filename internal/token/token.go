@@ -5,6 +5,7 @@ const (
 	RSB   = "]"
 	LCB   = "{"
 	RCB   = "}"
+	HASH  = "#"
 	COMMA = ","
 
 	COMMENT = "COMMENT"
