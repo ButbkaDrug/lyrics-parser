@@ -2,6 +2,8 @@ package parser
 
 import (
 	"lp/internal/lexer"
+	"lp/pkg/chords"
+	"lp/pkg/comments"
 	"lp/pkg/lyrics"
 	"testing"
 )
@@ -121,7 +123,7 @@ func TestParseSection(t *testing.T) {
 			Name:     "Verse",
 			Number:   1,
 			Lang:     "R",
-			Comments: []string{"Drums In"},
+			Comments: []comments.Comment{{Type: comments.GENERIC, Text: "Drums In"}},
 			Text: []lyrics.TextLine{
 				{Offset: 0, Length: 3.333, Text: "I want to screem it out"},
 				{Offset: 3.333, Length: 3.333, Text: "From Every Mountain top"},
@@ -131,15 +133,20 @@ func TestParseSection(t *testing.T) {
 		},
 		{
 			Name:     "Chorus",
-			Comments: []string{"All In []{}, 1234"},
+			Comments: []comments.Comment{{Type: comments.GENERIC, Text: "All In []{}, 1234"}},
 		},
 		{
 			Name:     "Tag",
-			Comments: []string{"Breakdown", "Base comes in on the second half"},
+			Comments: []comments.Comment{{Type: comments.GENERIC, Text: "Breakdown"}, {Type: comments.GENERIC, Text: "Base comes in on the second half"}},
 		},
 		{
+			ID:       0,
 			Name:     "Instrumental",
-			Comments: []string{"Пианино и скрипка"},
+			Number:   0,
+			Lang:     "",
+			Comments: []comments.Comment{{Type: comments.GENERIC, Text: "Пианино и скрипка"}},
+			Chords:   chords.Chords{},
+			Text:     []lyrics.TextLine{},
 		},
 		{
 			Name:   "Verse",

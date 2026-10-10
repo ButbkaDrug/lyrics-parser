@@ -6,7 +6,9 @@ const (
 	LCB   = "{"
 	RCB   = "}"
 	HASH  = "#"
+	COLON = ":"
 	COMMA = ","
+	SPACE = " "
 
 	COMMENT = "COMMENT"
 	IDENT   = "IDENTIFYER"

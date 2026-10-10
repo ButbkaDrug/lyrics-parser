@@ -2,6 +2,7 @@ package parser
 
 import (
 	"lp/internal/lexer"
+	"lp/pkg/comments"
 	"lp/pkg/lyrics"
 	"testing"
 )
@@ -25,7 +26,7 @@ None like You`
 	expectedSection := lyrics.Section{
 		Name:     "Verse",
 		Number:   1,
-		Comments: []string{"--22.857143"},
+		Comments: []comments.Comment{{Type: comments.GENERIC, Text: "--22.857143"}},
 		Text: []lyrics.TextLine{
 			{Offset: 0, Length: 4.571429, Text: "Water You turned into wine"},
 			{Offset: 4.571429, Length: 2.857143, Text: "Opened the eyes of the blind"},

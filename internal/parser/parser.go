@@ -7,6 +7,7 @@ import (
 	"lp/internal/lexer"
 	"lp/internal/token"
 	"lp/pkg/chords"
+	"lp/pkg/comments"
 	"lp/pkg/lyrics"
 	"os"
 	"strconv"
@@ -40,6 +41,7 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
+// returns true and advances the parser if peek token is of the type t. otherwise returns false
 func (p *Parser) expectPeek(t token.TokenType) bool {
 	if t == p.peekToken.Type {
 		p.nextToken()
@@ -49,6 +51,7 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 	return false
 }
 
+// returns true if peek token of the type t but NOT advances parser, otherwise returns false
 func (p *Parser) expectPeekIs(t token.TokenType) bool {
 	if t == p.peekToken.Type {
 		return true
@@ -126,24 +129,44 @@ func (p *Parser) parseSectionTitle() *lyrics.Section {
 	return s
 }
 
-func (p *Parser) parseComments() []string {
-	comments := []string{}
-	for p.curToken.Type == token.COMMENT {
-		comments = append(comments, p.curToken.Literal)
+func (p *Parser) parseComments() []comments.Comment {
+	results := []comments.Comment{}
 
-		if !p.expectPeek(token.NEWLINE) {
-			log.Fatalf("failed to parse comments. expected new line got %q", p.curToken.Type)
+	for p.curToken.Type != token.NEWLINE && p.curToken.Type != token.EOF {
+		results = append(results, p.parseComment())
+
+		if !p.expectPeek(token.NEWLINE) && !p.expectPeek(token.EOF) {
+			log.Fatalf("failed to parse comments. expected new line or end of file got %q", p.curToken.Type)
 		}
 
-		if !p.expectPeekIs(token.COMMENT) {
+		if !p.expectPeek(token.COMMENT) {
 			break
 		}
-		p.nextToken()
 	}
 
-	slog.Debug("finished with comments", "token", p.curToken, "peek", p.peekToken, "value", comments)
+	return results
+}
 
-	return comments
+// we need to consume comment symbol and start parsing comment with a next token which is potentially comment type. If first token will be of the type string and will be followed by a toke of the type colon, we will request comment type.
+func (p *Parser) parseComment() comments.Comment {
+	slog.Debug("parseComment invoked", "tok", p.curToken, "peek", p.peekToken)
+
+	result := comments.Comment{
+		Type: comments.GENERIC,
+	}
+
+	if idx := strings.Index(p.curToken.Literal, ":"); idx > 0 {
+		result.Type = comments.GetCommentType(p.curToken.Literal[:idx])
+
+		if idx+1 < len(p.curToken.Literal) {
+			p.curToken.Literal = strings.Trim(p.curToken.Literal[idx+1:], " ")
+		}
+
+	}
+
+	result.Text = p.curToken.Literal
+
+	return result
 }
 
 func (p *Parser) parserChordsLine() []chords.Chord {
@@ -319,4 +342,19 @@ func (p *Parser) Parse() *lyrics.Lyrics {
 	}
 
 	return l
+}
+
+func (p *Parser) ParseIntoStruct(l *lyrics.Lyrics) {
+
+	for p.curToken.Type != token.EOF {
+		switch p.curToken.Type {
+		case token.LSB:
+			s := p.parseSection()
+			if s != nil {
+				l.Sections = append(l.Sections, *s)
+			}
+		}
+
+		p.nextToken()
+	}
 }

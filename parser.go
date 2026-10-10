@@ -20,6 +20,7 @@ func Parse(p string) (lyrics.Lyrics, error) {
 	logfile, err := os.Create("/tmp/lyricsparser.log")
 	if err != nil {
 		slog.Error("lyricsparser: failed to create log file.", "error", err.Error())
+		logfile = os.Stdout
 	}
 
 	defer logfile.Close()
@@ -33,5 +34,32 @@ func Parse(p string) (lyrics.Lyrics, error) {
 	l := lexer.NewLexer(string(f))
 	parser := parser.NewParser(l)
 
-	return *parser.Parse(), nil
+	lyric := parser.Parse()
+	lyric.Path = p
+
+	return *lyric, nil
+}
+
+func ParseBytesInto(b []byte, lyric *lyrics.Lyrics) error {
+
+	logfile, err := os.Create("/tmp/lyricsparser.log")
+	if err != nil {
+		slog.Error("lyricsparser: failed to create log file.", "error", err.Error())
+		logfile = os.Stdout
+	}
+
+	defer logfile.Close()
+
+	slog.SetDefault(slog.New(
+		slog.NewTextHandler(logfile, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}),
+	))
+
+	l := lexer.NewLexer(string(b))
+	parser := parser.NewParser(l)
+
+	parser.ParseIntoStruct(lyric)
+
+	return nil
 }
